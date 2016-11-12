@@ -1,9 +1,8 @@
 import { Renderer, h } from './renderer';
+import { colors } from './shape';
 
 const renderer = new Renderer();
 renderer.mount(document.getElementById('container'), h('div'));
-
-const colors = ['none', '#2C3E50', '#E74C3C', '#1ABC9C', '#3498DB', '#E67E22'];
 
 export const render = (state: any ) => {
   const vnode = h('div', [

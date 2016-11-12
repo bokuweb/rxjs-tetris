@@ -16257,57 +16257,22 @@ exports.RemoveAction = RemoveAction;
 
 },{"rxjs/Subject":11}],351:[function(require,module,exports){
 "use strict";
-exports.blocks = [
-    {
-        x: 5,
-        y: 0,
-        shape: [
-            [1, 1],
-            [1, 1],
-        ],
-    }, {
-        x: 5,
-        y: 0,
-        shape: [
-            [0, 2, 0, 0],
-            [0, 2, 0, 0],
-            [0, 2, 0, 0],
-            [0, 2, 0, 0],
-        ],
-    }, {
-        x: 5,
-        y: 0,
-        shape: [
-            [0, 0, 0, 0],
-            [0, 3, 3, 0],
-            [0, 3, 0, 0],
-            [0, 3, 0, 0],
-        ],
-    }, {
-        x: 5,
-        y: 0,
-        shape: [
-            [0, 0, 0, 0, 0],
-            [0, 0, 4, 0, 0],
-            [0, 4, 4, 4, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-        ],
-    }
-];
+exports.config = {
+    ROW: 10,
+    COLUMN: 20,
+};
 
 },{}],352:[function(require,module,exports){
 "use strict";
 const rxjs_1 = require("rxjs");
-const utils_1 = require("./utils");
 const render_1 = require("./render");
-const block_1 = require("./block");
+const shape_1 = require("./shape");
 const sounder_1 = require("./sounder");
+const config_1 = require("./config");
 const actions_1 = require("./actions");
-const COLUMN = 20;
-const ROW = 10;
 const { assign } = Object;
-const fieldFactory = () => utils_1.range(COLUMN).map(() => utils_1.range(ROW).map(() => 99));
+const range = (n) => Array.from(Array(n).keys());
+const fieldFactory = () => range(config_1.config.COLUMN).map(() => range(config_1.config.ROW).map(() => 99));
 const keyEvent$ = rxjs_1.Observable
     .fromEvent(document, 'keydown')
     .map((k) => {
@@ -16353,7 +16318,7 @@ const canMoveX = (state, dx) => {
     return !isCollision(state.field, block);
 };
 const getRandomBlock = () => {
-    return assign({}, block_1.blocks[~~(Math.random() * block_1.blocks.length)]);
+    return assign({}, { x: 5, y: 0, shape: shape_1.shapes[~~(Math.random() * shape_1.shapes.length)] });
 };
 const createInitState = () => ({
     field: fieldFactory(),
@@ -16370,12 +16335,12 @@ const getRotatedShape = (shape) => {
     });
     return newShape;
 };
-const createNewField = (state) => {
-    const newField = state.field.map((row) => row.map((cell) => cell));
-    state.block.shape.forEach((row, i) => {
+const createNewField = (field, block) => {
+    const newField = field.map((row) => row.map((cell) => cell));
+    block.shape.forEach((row, i) => {
         row.forEach((cell, j) => {
-            if (cell && state.field[i + state.block.y] && state.field[i + state.block.y][j + state.block.x]) {
-                newField[i + state.block.y][j + state.block.x] = cell;
+            if (cell && field[i + block.y] && field[i + block.y][j + block.x]) {
+                newField[i + block.y][j + block.x] = cell;
             }
         });
     });
@@ -16406,7 +16371,7 @@ const gameState$ = rxjs_1.Observable
     }
     else if (action instanceof actions_1.NextAction) {
         const block = getRandomBlock();
-        const newField = createNewField(state);
+        const newField = createNewField(state.field, state.block);
         return assign(state, { block, field: newField });
     }
     else if (action instanceof actions_1.RotateAction) {
@@ -16415,9 +16380,9 @@ const gameState$ = rxjs_1.Observable
         return assign(state, { block });
     }
     else if (action instanceof actions_1.RemoveAction) {
-        action.removeRows.forEach((row) => {
-            state.field.splice(row, 1);
-            state.field.unshift(utils_1.range(ROW).map(() => 99));
+        action.removeRows.forEach((rowIndex) => {
+            state.field.splice(rowIndex, 1);
+            state.field.unshift(range(config_1.config.ROW).map(() => 99));
         });
         return state;
     }
@@ -16431,9 +16396,9 @@ const gameState$ = rxjs_1.Observable
     .share();
 const getRemovableRows = (field) => (field.map((row, i) => (row.every(cell => cell !== 99) ? i : null)).filter(c => c !== null));
 const isLocked$ = gameState$
-    .map(state => isLocked(state))
+    .map((state) => isLocked(state))
     .bufferCount(2, 1)
-    .map(lockedBuffer => lockedBuffer.every(isLocked => isLocked))
+    .map(lockedBuffer => (lockedBuffer.every(isLocked => isLocked)))
     .share();
 isLocked$
     .distinctUntilChanged()
@@ -16442,8 +16407,8 @@ isLocked$
     .do(() => sounder_1.beeper.next(100))
     .subscribe(actions_1.actionSource$);
 gameState$
-    .filter(state => state.block.y === 0)
-    .filter(state => (isCollision(state.field, state.block) || isLocked(state)))
+    .filter((state) => state.block.y === 0)
+    .filter((state) => (isCollision(state.field, state.block) || isLocked(state)))
     .map(_ => new actions_1.GameoverAction())
     .delay(200)
     .subscribe(actions_1.actionSource$);
@@ -16451,31 +16416,34 @@ gameState$
     .combineLatest(isLocked$)
     .delay(50)
     .filter(([_, isLocked]) => isLocked)
-    .map(([{ field }]) => getRemovableRows(field))
+    .map(([state, _]) => (getRemovableRows(state.field)))
     .filter(removeRows => removeRows.length > 0)
     .do(() => sounder_1.beeper.next(400))
     .map(removeRows => new actions_1.RemoveAction(removeRows))
     .subscribe(actions_1.actionSource$);
 gameState$
-    .map((state) => ({ isPaused: state.isPaused, field: createNewField(state) }))
+    .map((state) => ({
+    isPaused: state.isPaused,
+    field: createNewField(state.field, state.block)
+}))
     .subscribe(render_1.render);
 
-},{"./actions":350,"./block":351,"./render":353,"./sounder":355,"./utils":356,"rxjs":9}],353:[function(require,module,exports){
+},{"./actions":350,"./config":351,"./render":353,"./shape":355,"./sounder":356,"rxjs":9}],353:[function(require,module,exports){
 "use strict";
 const renderer_1 = require("./renderer");
+const shape_1 = require("./shape");
 const renderer = new renderer_1.Renderer();
 renderer.mount(document.getElementById('container'), renderer_1.h('div'));
-const colors = ['none', '#2C3E50', '#E74C3C', '#1ABC9C', '#3498DB', '#E67E22'];
 exports.render = (state) => {
     const vnode = renderer_1.h('div', [
         state.isPaused
             ? renderer_1.h('div', 'Press enter key to start')
-            : renderer_1.h('div.field', state.field.map((row) => (renderer_1.h('div.raw', row.map(cell => (renderer_1.h(`div.cell${cell !== 99 ? '--active' : ''}`, { style: { backgroundColor: colors[cell] } })))))))
+            : renderer_1.h('div.field', state.field.map((row) => (renderer_1.h('div.raw', row.map(cell => (renderer_1.h(`div.cell${cell !== 99 ? '--active' : ''}`, { style: { backgroundColor: shape_1.colors[cell] } })))))))
     ]);
     renderer.update(vnode);
 };
 
-},{"./renderer":354}],354:[function(require,module,exports){
+},{"./renderer":354,"./shape":355}],354:[function(require,module,exports){
 /// <reference path="../node_modules/snabbdom/type-definitions/snabbdom.d.ts" />
 "use strict";
 const snabbdom_1 = require("snabbdom");
@@ -16500,6 +16468,42 @@ class Renderer {
 exports.Renderer = Renderer;
 
 },{"snabbdom":348,"snabbdom/h":341,"snabbdom/modules/class":344,"snabbdom/modules/eventlisteners":345,"snabbdom/modules/props":346,"snabbdom/modules/style":347}],355:[function(require,module,exports){
+"use strict";
+exports.colors = ['none', '#2C3E50', '#E74C3C', '#1ABC9C', '#3498DB', '#E67E22'];
+exports.shapes = [
+    [
+        [1, 1],
+        [1, 1],
+    ],
+    [
+        [0, 2, 0, 0],
+        [0, 2, 0, 0],
+        [0, 2, 0, 0],
+        [0, 2, 0, 0],
+    ],
+    [
+        [0, 0, 0, 0],
+        [0, 3, 3, 0],
+        [0, 3, 0, 0],
+        [0, 3, 0, 0],
+    ],
+    [
+        [0, 0, 0, 0, 0],
+        [0, 0, 4, 0, 0],
+        [0, 4, 4, 4, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+    ],
+    [
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 5, 5, 0, 0],
+        [0, 0, 5, 5, 0],
+        [0, 0, 0, 0, 0],
+    ],
+];
+
+},{}],356:[function(require,module,exports){
 /// <reference path="../node_modules/@types/webaudioapi/index.d.ts" />
 "use strict";
 const rxjs_1 = require("rxjs");
@@ -16514,8 +16518,4 @@ exports.beeper.sampleTime(100).subscribe((hz) => {
     oscillator.stop(audio.currentTime + 0.1);
 });
 
-},{"rxjs":9}],356:[function(require,module,exports){
-"use strict";
-exports.range = (n) => Array.from(Array(n).keys());
-
-},{}]},{},[352]);
+},{"rxjs":9}]},{},[352]);

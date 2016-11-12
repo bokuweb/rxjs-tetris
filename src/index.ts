@@ -1,8 +1,8 @@
 import { Observable, Subject } from 'rxjs';
-import { range } from './utils';
 import { render } from './render';
-import { blocks, Block } from "./block";
+import { shapes, Shape } from "./shape";
 import { beeper } from "./sounder";
+import { config } from "./config";
 import {
   Action,
   actionSource$,
@@ -20,11 +20,23 @@ type Cell = number;
 type Row = Cell[];
 type Field = Row[];
 
-const COLUMN = 20;
-const ROW = 10;
+interface Block {
+  x: number;
+  y: number;
+  shape: Shape;
+}
+
+interface AppState {
+  isPaused: boolean;
+  block: Block;
+  field: Field;
+}
+
 const { assign } = Object;
 
-const fieldFactory = (): Field => range(COLUMN).map(() => range(ROW).map(() => 99));
+const range = (n: number) => Array.from(Array(n).keys());
+
+const fieldFactory = (): Field => range(config.COLUMN).map(() => range(config.ROW).map(() => 99));
 
 const keyEvent$ = Observable
   .fromEvent(document, 'keydown')
@@ -57,7 +69,7 @@ const isCollision = (field: Field, block: Block) => {
   ))
 };
 
-const isLocked = (state: any) => {
+const isLocked = (state: AppState) => {
   const { x, y, shape } = state.block;
   return shape.some((row: Row, i: number) => (
     row.some((cell: Cell, j: number) => {
@@ -69,14 +81,14 @@ const isLocked = (state: any) => {
   ))
 };
 
-const canMoveX = (state: any, dx: number) => {
+const canMoveX = (state: AppState, dx: number) => {
   const block = assign({}, state.block);
   block.x += dx;
   return !isCollision(state.field, block);
 }
 
 const getRandomBlock = () => {
-  return assign({}, blocks[~~(Math.random() * blocks.length)]);
+  return assign({}, { x: 5, y: 0, shape: shapes[~~(Math.random() * shapes.length)] });
 }
 
 const createInitState = () => ({
@@ -85,23 +97,23 @@ const createInitState = () => ({
   isPaused: true,
 });
 
-const getRotatedShape = (shape: any) => {
+const getRotatedShape = (shape: Shape) => {
   const newShape: any[] = [];
-  shape.forEach((row: Row, y: number) => {
+  shape.forEach((row: number[], y: number) => {
     newShape[y] = [];
-    row.forEach((cell: Cell, x: number) => {
+    row.forEach((cell: number, x: number) => {
       newShape[y][x] = shape[row.length - x - 1][y];
     });
   })
   return newShape;
 };
 
-const createNewField = (state: any) => {
-  const newField = state.field.map((row: number[]) => row.map((cell) => cell));
-  state.block.shape.forEach((row: Row, i:number) => {
-    row.forEach((cell: number, j: number) => {
-      if (cell && state.field[i + state.block.y] && state.field[i + state.block.y][j + state.block.x]) {
-        newField[i + state.block.y][j + state.block.x] = cell;
+const createNewField = (field: Field, block: Block) => {
+  const newField = field.map((row: Row) => row.map((cell) => cell));
+  block.shape.forEach((row: Row, i:number) => {
+    row.forEach((cell: Cell, j: number) => {
+      if (cell && field[i + block.y] && field[i + block.y][j + block.x]) {
+        newField[i + block.y][j + block.x] = cell;
       }
     });
   });
@@ -110,7 +122,7 @@ const createNewField = (state: any) => {
 
 const gameState$ = Observable
   .merge(actionSource$)
-  .scan((state: any, action: any) => {
+  .scan((state: AppState, action: Action) => {
     if (action instanceof StartAction) {
       return assign(state, { isPaused: false } );
     } else if (action instanceof DownAction) {
@@ -125,16 +137,16 @@ const gameState$ = Observable
       return state;
     } else if (action instanceof NextAction) {
       const block = getRandomBlock();
-      const newField = createNewField(state);
+      const newField = createNewField(state.field, state.block);
       return assign(state, { block, field: newField });
     } else if (action instanceof RotateAction) {
       const rotatedBlock = assign({}, state.block, { shape: getRotatedShape(state.block.shape) });
       const block = isCollision(state.field, rotatedBlock) ? state.block : rotatedBlock;
       return assign(state, { block });
     } else if (action instanceof RemoveAction) {
-      action.removeRows.forEach((row: number) => {
-        state.field.splice(row, 1);
-        state.field.unshift(range(ROW).map(() => 99))
+      action.removeRows.forEach((rowIndex: number) => {
+        state.field.splice(rowIndex, 1);
+        state.field.unshift(range(config.ROW).map(() => 99))
       });
       return state;
     } else if (action instanceof GameoverAction) {
@@ -152,9 +164,11 @@ const getRemovableRows = (field: Field) => (
 )
 
 const isLocked$ = gameState$
-  .map(state => isLocked(state))
+  .map((state: AppState) => isLocked(state))
   .bufferCount(2, 1)
-  .map(lockedBuffer => lockedBuffer.every(isLocked => isLocked))
+  .map(lockedBuffer => (
+    lockedBuffer.every(isLocked => isLocked)
+  ))
   .share()
 
 isLocked$
@@ -165,8 +179,8 @@ isLocked$
   .subscribe(actionSource$);
 
 gameState$
-  .filter(state => state.block.y === 0)
-  .filter(state => (
+  .filter((state: AppState) => state.block.y === 0)
+  .filter((state: AppState) => (
     isCollision(state.field, state.block) || isLocked(state)
   ))
   .map(_ => new GameoverAction())
@@ -177,14 +191,18 @@ gameState$
   .combineLatest(isLocked$)
   .delay(50)
   .filter(([_, isLocked]) => isLocked)
-  .map(([{ field }]) => getRemovableRows(field))
+  .map(([state, _]: [AppState, boolean]) => (
+    getRemovableRows(state.field)
+  ))
   .filter(removeRows => removeRows.length > 0)
   .do(() => beeper.next(400))
   .map(removeRows => new RemoveAction(removeRows))
   .subscribe(actionSource$);
 
 gameState$
-  .map((state) => ({ isPaused: state.isPaused, field: createNewField(state) }))
+  .map((state: AppState) => ({
+    isPaused: state.isPaused,
+    field: createNewField(state.field, state.block)
+  }))
   .subscribe(render);
-
 
