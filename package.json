@@ -1,0 +1,32 @@
+{
+  "name": "rxjs-lifegame",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "npm run connect & npm run watch & open http://localhost:3334",
+    "connect": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "browserify src/index.ts -p tsify --noImplicitAny > docs/dist/bundle.js",
+    "watch": "watchify --extension=ts -p tsify --noImplicitAny -o docs/dist/bundle.js src/index.ts"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chai": "^3.4.34",
+    "@types/rx": "^2.5.33",
+    "@types/webaudioapi": "0.0.27",
+    "browserify": "^13.0.0",
+    "browserify-versionify": "^1.0.6",
+    "connect": "^3.4.1",
+    "serve-static": "^1.10.2",
+    "tsify": "^2.0.2",
+    "typescript": "^2.1.1",
+    "watchify": "^3.7.0"
+  },
+  "dependencies": {
+    "es6-shim": "^0.35.1",
+    "rxjs": "^5.0.0-rc.2",
+    "snabbdom": "https://github.com/bokuweb/snabbdom.git#change_typedef"
+  }
+}

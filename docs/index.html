@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <title>Rxjs lifegame</title>
+        <link href='https://fonts.googleapis.com/css?family=Audiowide' rel='stylesheet' type='text/css'>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body > div {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Audiowide', cursive;
+            font-size: 20px;
+          }
+
+          .field {
+            width: 160px;
+            height: 320px;
+            border: solid 2px #aaa;
+            padding-bottom: 3px;
+          }
+
+          .raw {
+            height: 16px;
+          }
+          .cell,
+          .cell--active {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background-color: #ccc;
+            opacity: 0;
+            box-sizing: border-box;
+          }
+
+          .cell--active {
+            opacity: 1;
+            border: solid 1px #fafafa;
+          }
+        </style>
+    </head>
+    <body>
+        <div id="container"></div>
+        <script src="dist/bundle.js"></script>
+    </body>
+</html>

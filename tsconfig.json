@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es6",
+        "noImplicitAny": true,
+        "experimentalDecorators": false,
+        "sourceMap": true,
+        "declaration": false,
+        "noEmitOnError": true
+    },
+    "filesGlob": [
+        "./lib/**/*.ts",
+        "./lib/**/*.tsx",
+        "!./lib/**/*.d.ts",
+        "./test/**/*.ts",
+        "./test/**/*.tsx",
+        "!./test/**/*.d.ts",
+        "./typings/**/*.ts",
+        "./node_modules/typescript/lib/lib.es6.d.ts"
+    ],
+    "files": [
+    ]
+}
