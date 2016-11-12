@@ -21,9 +21,9 @@ Open http://localhost:3334 in your browser.
 
 ## Key map
 
-Move: Down / Right / Left
-Rotate: Space
-Start: Enter
+Move: Down / Right / Left    
+Rotate: Space    
+Start: Enter    
 
 ## License
 
