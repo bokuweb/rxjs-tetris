@@ -4,6 +4,7 @@ rxjs tetris.
 
 ## Screenshot
 
+![screenshot](https://github.com/bokuweb/rxjs-tetris/blob/master/docs/screenshot.gif?raw=true)
 
 ## Demo
 
