@@ -16346,8 +16346,7 @@ const createNewField = (field, block) => {
     });
     return newField;
 };
-const gameState$ = rxjs_1.Observable
-    .merge(actions_1.actionSource$)
+const gameState$ = actions_1.actionSource$
     .scan((state, action) => {
     if (action instanceof actions_1.StartAction) {
         return assign(state, { isPaused: false });
