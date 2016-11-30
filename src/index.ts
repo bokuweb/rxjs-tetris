@@ -120,8 +120,7 @@ const createNewField = (field: Field, block: Block) => {
   return newField;
 }
 
-const gameState$ = Observable
-  .merge(actionSource$)
+const gameState$ = actionSource$
   .scan((state: AppState, action: Action) => {
     if (action instanceof StartAction) {
       return assign(state, { isPaused: false } );
